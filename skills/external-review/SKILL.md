@@ -1,22 +1,28 @@
 ---
 name: external-review
-description: "Get an independent review of pending (uncommitted) changes from an external AI reviewer before committing — Codex CLI first, falling back to GitHub Copilot CLI if Codex fails. Use automatically before every `git commit` that touches behavior or configuration (including infra-as-code: Terraform, Dockerfiles, CI/CD); do not wait to be asked. Skip only for pure documentation typo fixes or dependency-only version bumps with no behavior change."
+description: "Get an independent code review from an external AI reviewer (Codex CLI, falling back to GitHub Copilot CLI) for pending/uncommitted changes, a whole branch, a diff against a base ref, or an arbitrary commit range. Never substitutes a same-vendor/model subagent as the reviewer."
 ---
 
 # External Code Review
 
-Runs before `git commit` on any change that touches behavior or configuration — a
-second, independent set of eyes from a different model than the one doing the
-implementation.
+Gets a second, independent set of eyes — from a different model than the one doing
+the implementation — on pending/uncommitted changes, a whole branch, a diff against
+a base ref, or an arbitrary commit range.
 
 **Never self-review.** If no reviewer is available, don't substitute a self-review and
 don't commit silently — see "If both fail" below for what to do instead.
+
+Check the target project's own docs (AGENTS.md, CLAUDE.md, a CONTRIBUTING guide) for
+when to trigger this automatically — e.g. "before every commit that touches behavior
+or configuration" — and what's exempt. If there isn't a documented policy, ask the
+user rather than assuming; when genuinely unclear, default to reviewing rather than
+silently deciding something doesn't need it.
 
 The scripts this skill uses live in `scripts/` next to this SKILL.md. Resolve that to an
 **absolute path** before invoking it — e.g. `<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh` —
 and do **not** `cd` into the skill's directory to use a relative path instead: your
 working directory needs to stay at the target repo's root, since `codex exec`/`copilot`
-investigate the pending changes in whatever directory they're launched from. A plain
+investigate whatever's in scope from the directory they're launched from. A plain
 relative path like `scripts/run-codex-review.sh` only works by coincidence (e.g. while
 developing inside this skill's own repo) and silently reviews the wrong repository, or
 fails outright, everywhere else it's installed (personal `~/.claude/skills/`, a
@@ -105,9 +111,13 @@ Give real context, since the reviewer has no memory of this conversation:
 - What's already been considered/ruled out, so it doesn't re-raise settled questions.
 - Known risk points if you have them (regex edge cases, a tricky concurrency change,
   etc.) — but leave room for it to flag things you didn't ask about too.
-- The scope requirement: review only the pending/uncommitted changes, and account for
-  the full diff — a plain `git diff` alone misses staged changes and won't show
-  untracked files at all.
+- The scope, stated precisely — don't leave it for the reviewer to guess:
+  - Pending/uncommitted changes (the default, before-commit case): note that a plain
+    `git diff` alone misses staged changes and won't show untracked files at all.
+  - A whole branch, or a diff against a base ref: give the actual base ref/branch
+    name, not just "the default branch" — an assumed wrong base silently reviews the
+    wrong range.
+  - An arbitrary commit range: give the exact range or commit hashes.
 
 ## 2. Fallback: GitHub Copilot CLI
 
@@ -182,34 +192,30 @@ transient failure, per above) and let them decide how to proceed:
 
 - Fix the reported setup gap(s) and retry.
 - Wait and retry later (for a transient failure).
-- Explicitly tell you to proceed without review for this commit (see "User override" below).
+- Explicitly tell you to proceed without review this time (see "User override" below).
 
-Do not decide on your own to commit unreviewed code for a behavior change.
+Do not decide on your own to proceed unreviewed for a change that affects behavior
+or configuration.
 
-## 5. Skip criteria
+## 5. Judging "does this touch behavior or configuration"
 
-Skip only for:
-
-- Pure documentation typo fixes.
-- Dependency-only version bumps (lockfile/manifest only, no functional change).
-
-— unless the user explicitly asks for a review, which always overrides these skip
-criteria.
-
-The right test is "does this change affect behavior or configuration in any
-environment?" — not "is it code". Infrastructure-as-code (Terraform, Dockerfiles,
-CI/CD workflows), deployment scripts, and permission/policy changes are **not**
-skip-eligible even though they might look like "just config".
+If a project's stated policy turns on this question (e.g. "review before every
+commit that touches behavior or configuration") and it isn't obvious, judge by
+effect, not file type: infrastructure-as-code (Terraform, Dockerfiles, CI/CD
+workflows), deployment scripts, and permission/policy changes count even though they
+might look like "just config". An on-demand branch/range review is itself an
+explicit ask, so this question doesn't apply there — it's never skipped.
 
 ## 6. User override
 
 If the user explicitly says "skip review" / "just commit" / "no review", honor it for
-that commit only — don't treat it as a standing instruction for future commits.
+that one instance only (that commit, or that branch/range review) — don't treat it
+as a standing instruction for future reviews.
 
 ## 7. Handling feedback
 
 - **Trivial / clearly correct** (typos, obvious bugs, lint-level issues, dead code):
-  apply silently before commit, then mention briefly what was fixed.
+  apply silently, then mention briefly what was fixed.
 - **Significant** (design questions, behavioral changes, ambiguous tradeoffs): pause,
   surface to the user, and get confirmation before proceeding.
 - **False positives / disagreements**: always explain the specific reason for rejection
