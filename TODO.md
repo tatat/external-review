@@ -92,3 +92,56 @@ don't prompt every time) is no longer a TODO — `skills/setup/SKILL.md` step 3 
 this now, in global `~/.claude/settings.json` (confirmed working during dogfooding:
 a rule shaped like `Bash(<path>/scripts/run-codex-review.sh *)` does suppress the
 prompt once registered and picked up).
+
+## Consider `codex app-server` instead of `codex exec`, if it ever gets easy to use
+
+`run-codex-review.sh` uses `codex exec --sandbox read-only --ephemeral` — a stable,
+simple, one-shot non-interactive invocation that matches this script's needs exactly.
+Codex CLI also has a `codex app-server` command: an `[experimental]` long-running
+daemon that speaks a structured RPC protocol (stdio/unix socket/websocket), meant for
+building custom integrations (e.g. IDE extensions; `openai-codex`'s own Claude Code
+plugin ships a whole Node.js client for it — `scripts/app-server-broker.mjs`,
+`scripts/lib/app-server.mjs`). Not worth adopting today: it'd require this repo to
+implement or depend on an RPC client just to run one review and read back one
+response, for no clear benefit over `exec`, and it's explicitly less stable
+(`[experimental]`) than the command already in use.
+
+Trigger to revisit: if a lightweight, low-dependency way to talk to `app-server`
+becomes available (e.g. a small bundled client, or `codex` itself grows a simpler
+one-shot mode that's backed by it) such that switching wouldn't mean reimplementing
+an RPC client from scratch in this repo's own bash scripts.
+
+## Consider Claude Code as a candidate reviewer, when the underlying model differs
+
+The independence this skill actually cares about (SKILL.md's "If both fail" rule:
+don't substitute a same-vendor/model-family subagent for the agent that implemented
+the change) is about the **underlying model**, not which CLI binary happens to be
+running. "Codex CLI + Copilot CLI, never Claude Code" is just today's proxy for that,
+and it only works because the primary use case today is Claude Code itself
+implementing changes — so excluding Claude Code as a reviewer happens to also exclude
+the implementer's model family.
+
+That proxy already breaks in a case that exists today: **Copilot CLI itself can run
+on Claude models** (`--model claude-sonnet-5` and other Claude variants are in its
+supported model list, per `copilot help config`). If Claude Code is the implementer
+and a Copilot CLI fallback happens to be configured with a Claude model, that
+fallback isn't actually an independent reviewer, even though it's a different CLI
+program — same model family reviewing itself, just wearing a different binary.
+
+And the reverse case matters for portability too: this skill is meant to be portable
+across the whole Agent Skills ecosystem (see CLAUDE.md's conventions on
+`${CLAUDE_PLUGIN_ROOT}`) — including being installed for **Codex CLI or Copilot CLI
+as the implementing agent** (e.g. via `.agents/skills/`). In that case, Claude Code
+(via `claude -p` non-interactively) would be a genuinely independent, different-model
+reviewer, not a self-review — worth adding as a third candidate.
+
+Not designed yet because both directions need the same missing piece: a way to check
+*which model* is actually implementing versus which model a candidate reviewer would
+run on (e.g. reading Copilot CLI's configured `--model`/`model` setting before
+trusting it as independent), rather than hardcoding "not Claude Code" as a stand-in
+for "not the implementer's model family."
+
+Trigger to revisit: when this skill gets used with a non-Claude-Code implementing
+agent (making Claude Code's exclusion from the reviewer roster start to matter), or
+when a Copilot CLI fallback configured with a Claude model is observed reviewing a
+Claude Code implementer's own change.
