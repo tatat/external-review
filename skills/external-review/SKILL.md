@@ -86,8 +86,10 @@ restrictions) — no need to add anything like that to your own prompt.
   codex-cli 0.142.2, confirmed working under ChatGPT login) is fine. Some other model
   IDs 400-error under a ChatGPT login rather than an API key.
 - For a large/complex diff where the review might take a while, run this same script
-  call with `run_in_background: true` instead of waiting synchronously — you'll be
-  notified when it completes, output included; no need to poll or manually `sleep`.
+  call in the background instead of waiting synchronously (in Claude Code, that's the
+  Bash tool's `run_in_background: true` parameter — use whatever equivalent your
+  agent tool provides) — you'll be notified when it completes, output included; no
+  need to poll or manually `sleep`.
 
 ### Writing the prompt
 
@@ -138,9 +140,9 @@ directory created per invocation by default (not Copilot's own persistent
 `~/.copilot/logs/`), overridable via `EXTERNAL_REVIEW_COPILOT_LOG_DIR`. `--silent`
 means the output is just the agent's response, not stats/chrome), then prints a
 `Full trace: <path>` line pointing at that invocation's log — same as Codex, read
-it only if something looks wrong. Same `run_in_background`
-guidance as Codex: use the parameter, not a trailing `&` — combining both detaches the
-process and its output is lost. Same automatic no-recursion preamble as the Codex
+it only if something looks wrong. Same background-execution
+guidance as Codex: use your agent tool's native background parameter, not a trailing
+`&` — combining both detaches the process and its output is lost. Same automatic no-recursion preamble as the Codex
 script, too — nothing extra to add to your own prompt.
 
 ## 3. Diagnosing a failure

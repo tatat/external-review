@@ -1,9 +1,9 @@
 # external-review
 
 Independent AI code review (Codex CLI, falling back to GitHub Copilot CLI) before
-`git commit`. Distributed as a Claude Code plugin (`.claude-plugin/`, skill in
-`skills/external-review/` — `.claude/skills/external-review` symlinks to it for
-dogfooding in this repo).
+`git commit`. Distributed as a Claude Code plugin (`.claude-plugin/`, skills in
+`skills/external-review/` and `skills/setup/` — `.claude/skills/` symlinks to both
+for dogfooding in this repo).
 
 ## Structure
 
@@ -18,6 +18,10 @@ dogfooding in this repo).
   (`--experimental --sandbox` enable Copilot CLI's OS-level sandbox for the
   session; no custom policy is configured, so this doesn't make the target repo
   itself read-only — see TODO.md).
+- `skills/setup/SKILL.md` — one-time environment prep: installs/checks Codex CLI and
+  Copilot CLI, prompts the user to log in if needed, and registers a global Bash
+  permission rule (`~/.claude/settings.json`) so review invocations stop prompting
+  for confirmation every time.
 - `.claude-plugin/plugin.json` — plugin manifest.
 - `.claude-plugin/marketplace.json` — lets this repo be added directly as a
   marketplace source (`/plugin marketplace add tatat/external-review`) for personal

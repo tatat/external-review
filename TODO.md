@@ -42,24 +42,8 @@ just not within the target repo itself). (2) is a one-time, low-stakes global
 toggle (gates experimental CLI features, not filesystem/network access) — not
 nothing, but not worth the complexity below to avoid.
 
-The only way to close (1) *and* avoid (2) entirely would be an isolated, disposable
-`COPILOT_HOME` per invocation (`mktemp -d`, write a from-scratch `settings.json`
-with the real restrictive policy above pointed at that invocation's target repo,
-then `rm -rf` it after): that fully sidesteps the global-settings problem and
-allows a genuinely dynamic per-repo policy, since the settings file is authored
-fresh each time instead of relying on persisted global or (non-overridable)
-repo-level config. Not pursued yet because the credential story is unverified —
-whether Copilot CLI's stored auth (system credential store / macOS Keychain, per
-`copilot login`'s own docs) is still reachable with a fresh `COPILOT_HOME`, or
-whether `run-copilot-review.sh` would need to mint a token via `gh auth token` and
-pass it through `GH_TOKEN`/`GITHUB_TOKEN` (documented as taking precedence over
-stored credentials, explicitly recommended for headless automation).
-
 Trigger to revisit: if the `--experimental` persistence or the default-policy gap
-actually causes a problem in practice (not just in theory), or when this repo gets
-a `setup` skill (modeled on tatat/zunda-presenter's `skills/setup`) and verifying
-the isolated-`COPILOT_HOME` auth story becomes cheap to fold in alongside other
-one-time environment checks (Codex/Copilot CLI installed + authenticated).
+actually causes a problem in practice, not just in theory.
 
 If this trade-off ever looks wrong, dropping `--experimental --sandbox` from
 `run-copilot-review.sh` reverts cleanly to the pre-sandbox behavior (`--deny-tool
@@ -99,37 +83,12 @@ per-environment, instead of standardizing on one:
 3. Outside the repo (e.g. `/tmp/`) — zero repo contact, at the cost of the
    one-confirmation-per-session floor described above.
 
-No further action needed here unless a `setup` skill later wants to smooth over
-option 3's per-session confirmation somehow (no known mechanism to do so today).
+No further action needed here unless `skills/setup/SKILL.md` later grows a way to
+smooth over option 3's per-session confirmation somehow (no known mechanism to do
+so today).
 
-## Register a Bash allow-rule for the scripts themselves, once per environment
-
-The whole point of switching to `<prompt-file>` args (see above) was so a Bash
-permission allow-rule could actually match a fixed, unvarying command — but nothing
-registers that rule automatically today. Without it, every single review invocation
-(not just the first one, unlike the Write-side confirmation above) prompts for
-confirmation, since Claude Code doesn't ask a written rule to persist itself; a
-rule has to actually be added to a settings file.
-
-Confirmed working during dogfooding: a rule shaped like
-`Bash(<path>/scripts/run-codex-review.sh *)` does suppress the prompt once
-registered and the settings file has been picked up (a mid-session edit to
-`.claude/settings.local.json` may need `/hooks` or a restart to be noticed — see
-Claude Code's settings-watcher caveat; a fresh session reads it fine). No separate
-no-args form is needed: `<prompt-file>` is a required argument (`${1:?...}` in
-both scripts), so every valid invocation has at least one trailing argument.
-
-Where this should go differs from the Write-scratch-directory question above: the
-skill's own script path is the same regardless of which target repo is being
-reviewed, so this belongs in **global** `~/.claude/settings.json`, not a
-per-project `.claude/settings.local.json` — otherwise it'd need re-registering in
-every project you ever review from. The path itself varies by install location
-though (personal `~/.claude/skills/external-review/`, project
-`.claude/skills/external-review/`, or a plugin cache path), so a setup step would
-need to resolve *this specific environment's* actual skill path before writing the
-rule, not hardcode one.
-
-Trigger to actually do this: same as the entries above — when this repo gets a
-`setup` skill. Until then, expect a confirmation prompt on every review invocation
-in a fresh environment, and register the rule by hand (or accept the prompts) in
-the meantime.
+Registering a Bash allow-rule for the scripts themselves (so review invocations
+don't prompt every time) is no longer a TODO — `skills/setup/SKILL.md` step 3 does
+this now, in global `~/.claude/settings.json` (confirmed working during dogfooding:
+a rule shaped like `Bash(<path>/scripts/run-codex-review.sh *)` does suppress the
+prompt once registered and picked up).
