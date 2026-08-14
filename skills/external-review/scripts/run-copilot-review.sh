@@ -1,10 +1,17 @@
 #!/bin/bash
-# Runs a GitHub Copilot CLI review with the prompt read from stdin.
+# Runs a GitHub Copilot CLI review with the prompt read from a file.
 #
 # Usage:
-#   run-copilot-review.sh [model] <<'PROMPT'
-#   <review prompt>
-#   PROMPT
+#   run-copilot-review.sh <prompt-file> [model]
+#
+# The prompt is read from <prompt-file>, not stdin/a heredoc -- see
+# run-codex-review.sh's comment for why: a heredoc's varying body can't be
+# covered by a single Bash permission allow-rule (confirmed empirically), while
+# a fixed prompt-file path keeps the invoked command text constant.
+# <prompt-file> is deleted as soon as its content is read into memory, before
+# copilot starts -- so if the caller wrote it inside the target repo's own
+# working tree, it's already gone before copilot investigates "pending changes"
+# and can't be mistaken for part of the diff.
 #
 # Defaults to gpt-5.5 if [model] is omitted, intended to match the current Codex
 # CLI default (see run-codex-review.sh -- it doesn't pin a model itself, it defers
@@ -13,7 +20,7 @@
 # changes, update this to match.
 #
 # A fixed no-recursion preamble (see NO_RECURSION_PREAMBLE below) is prepended to
-# whatever prompt is piped in on stdin -- see run-codex-review.sh's comment for why:
+# whatever prompt is in <prompt-file> -- see run-codex-review.sh's comment for why:
 # Copilot CLI (`--allow-all-tools`) also has read access to the target repo and
 # could otherwise try to act on that repo's own AGENTS.md/CLAUDE.md or skill
 # instructions, recursively invoking a review of its own review.
@@ -63,8 +70,14 @@ read-only inspection commands (git diff, git status, git log, grep, cat, etc.).
 Avoid any action requiring network access.
 PREAMBLE
 
-MODEL="${1:-gpt-5.5}"
-FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$(cat)"
+PROMPT_FILE="${1:?usage: run-copilot-review.sh <prompt-file> [model]}"
+MODEL="${2:-gpt-5.5}"
+if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
+  echo "run-copilot-review.sh: couldn't read prompt file: $PROMPT_FILE" >&2
+  exit 1
+fi
+rm -f "$PROMPT_FILE"
+FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
 # --deny-tool write blocks the dedicated file-write tool. Deny rules take
 # precedence over --allow-all-tools. This alone doesn't cover shell-based writes
 # (e.g. `git commit`, `rm`) -- SANDBOX_FLAGS above adds real OS-level enforcement

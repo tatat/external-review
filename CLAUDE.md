@@ -14,9 +14,10 @@ dogfooding in this repo).
   `codex exec --sandbox read-only --ephemeral` with a no-recursion preamble so Codex
   doesn't try to review its own review.
 - `skills/external-review/scripts/run-copilot-review.sh` — fallback reviewer. Same
-  no-recursion preamble, wraps `copilot --experimental --allow-all-tools --deny-tool write`
-  (`--experimental` enables Copilot CLI's OS-level sandbox *support*; actually
-  configuring that sandbox's policy is deferred, see TODO.md).
+  no-recursion preamble, wraps `copilot --experimental --sandbox --allow-all-tools --deny-tool write`
+  (`--experimental --sandbox` enable Copilot CLI's OS-level sandbox for the
+  session; no custom policy is configured, so this doesn't make the target repo
+  itself read-only — see TODO.md).
 - `.claude-plugin/plugin.json` — plugin manifest.
 - `.claude-plugin/marketplace.json` — lets this repo be added directly as a
   marketplace source (`/plugin marketplace add tatat/external-review`) for personal
@@ -52,6 +53,17 @@ dogfooding in this repo).
 - Keep this skill's logic generic: no assumptions about a specific host project's
   file layout, doc filenames, or conventions. Anything project-specific belongs in
   the *target* repo being reviewed, not here.
+- Both scripts take the review prompt as a **file path** (`<prompt-file>`), not
+  stdin/a heredoc. Confirmed empirically that a heredoc whose body differs every
+  invocation can never be covered by a single Bash permission allow-rule (neither
+  a wildcard nor an exact-match rule suppressed the confirmation prompt); a fixed
+  prompt-file path keeps the invoked command text constant, which a permission
+  rule can actually match. SKILL.md documents three places to Write that file (a
+  repo's own gitignored scratch convention if it has one, anywhere else in the
+  repo, or outside it entirely) — see TODO.md for why no single fixed location
+  won permanently. Both scripts delete `<prompt-file>` themselves right after
+  reading it, before the reviewer starts, so even the "anywhere in the repo"
+  option can't be mistaken for part of the diff being reviewed.
 - `TODO.md` records improvements that were considered and deliberately deferred,
   with the trigger that would make each worth doing. Check it before redesigning
   something it covers; add to it when deferring a non-trivial idea.

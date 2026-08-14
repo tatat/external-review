@@ -22,23 +22,53 @@ developing inside this skill's own repo) and silently reviews the wrong reposito
 fails outright, everywhere else it's installed (personal `~/.claude/skills/`, a
 project's `.claude/skills/`, or as an installed plugin).
 
+Both scripts take the review prompt as a **file path**, not stdin/a heredoc — write
+your prompt to a file with the Write tool first, then pass that path as the first
+argument. A heredoc's body differs on every invocation, so it can never be covered by
+a single Bash permission allow-rule (confirmed empirically — neither a wildcard nor an
+exact-match rule suppresses the confirmation prompt when the heredoc content varies);
+a fixed prompt-file path keeps the invoked command text constant, which a permission
+rule can actually match.
+
+Where to write that file — pick whichever fits this environment, in this order of
+preference:
+
+1. **The target repo's own established scratch convention, if it has one** — e.g. a
+   gitignored `tmp/`/`.tmp/` directory some projects already use for throwaway files
+   (check `.gitignore`). Zero Write-permission friction (it's inside the current
+   project) and no contamination risk (already excluded from `git status`/`git diff`,
+   so the reviewer won't see it as a pending change).
+2. **Anywhere in the target repo** — if no such convention exists, write it in the
+   repo (e.g. its root) anyway. Same zero Write-permission friction as above, and no
+   cleanup for you to remember either: both scripts delete `<prompt-file>` themselves
+   as soon as they've read it into memory, *before* invoking `codex exec`/`copilot`,
+   so it's already gone by the time the reviewer inspects "pending changes."
+3. **Outside the repo entirely** (e.g. `/tmp/`) — if you'd rather not touch the
+   target repo's working tree even transiently. Confirmed empirically that Write
+   grants for paths outside the current project are **session-scoped only**: even
+   with a matching `Write(...)` rule added to the project's own
+   `.claude/settings.local.json`, a fresh session still asks for confirmation once;
+   choosing "allow all edits in `<dir>` during this session" avoids being asked again
+   for the rest of that session, but nothing persists to any settings file across
+   sessions. So this option costs one confirmation per session, in exchange for
+   never touching the repo at all.
+
 ## 1. Primary reviewer: Codex CLI (direct)
 
 Call `codex exec` directly — this gives a **fresh, unbiased read every time**, with no
 carried-over assumptions from a previous review or from the implementation conversation
 itself.
 
-Use the bundled script — don't hand-write the `codex exec` invocation. Run it directly
+Use the bundled script — don't hand-write the `codex exec` invocation. Write the
+prompt (see "Writing the prompt" below) to a file first, then run the script directly
 (it's already executable) rather than through `bash`/`sh`:
 
 ```bash
-<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh <<'PROMPT'
-<review prompt — see "Writing the prompt" below>
-PROMPT
+<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh <prompt-file>
 ```
 
-The script runs `codex exec --sandbox read-only --ephemeral` with the prompt piped in
-via stdin. `codex exec`'s own verbose transcript (every tool call it makes while
+The script runs `codex exec --sandbox read-only --ephemeral` with the prompt read
+from `<prompt-file>`. `codex exec`'s own verbose transcript (every tool call it makes while
 investigating) is redirected to a log file, not printed — normal output is just the
 clean final message, plus a `Full trace: <path>` line on stderr. The printed final
 message is normally all you need; read the log only if something looks wrong (a
@@ -51,7 +81,7 @@ instructions (it has read access to that repo and would otherwise sometimes try 
 recursively invoke a review of its own review, then fail on its sandboxed environment's
 restrictions) — no need to add anything like that to your own prompt.
 
-- Don't pass a model override (`<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh <model> <<'PROMPT' ...`)
+- Don't pass a model override (`<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh <prompt-file> <model>`)
   unless a run fails on the account's default model — the default (`gpt-5.5` as of
   codex-cli 0.142.2, confirmed working under ChatGPT login) is fine. Some other model
   IDs 400-error under a ChatGPT login rather than an API key.
@@ -80,15 +110,15 @@ Give real context, since the reviewer has no memory of this conversation:
 ## 2. Fallback: GitHub Copilot CLI
 
 If Codex fails, immediately run the bundled script directly (again, don't hand-write
-the `copilot` invocation):
+the `copilot` invocation). Write the prompt to a **new** file and pass its path — the
+file from step 1 is already gone by now (`run-codex-review.sh` deletes it right after
+reading, before Codex even starts):
 
 ```bash
-<abs-path-to-this-skill-dir>/scripts/run-copilot-review.sh <<'PROMPT'
-<review prompt>
-PROMPT
+<abs-path-to-this-skill-dir>/scripts/run-copilot-review.sh <prompt-file>
 ```
 
-The script reads the prompt from stdin and forwards it to
+The script reads the prompt from `<prompt-file>` and forwards it to
 `copilot --experimental --sandbox --log-dir <dir> --model gpt-5.5 --allow-all-tools --deny-tool write --silent -p '<prompt>'`
 (the model defaults to `gpt-5.5`, intended to match the current Codex CLI default
 — see run-codex-review.sh, which doesn't pin a model itself — so both reviewers

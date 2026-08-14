@@ -65,3 +65,71 @@ If this trade-off ever looks wrong, dropping `--experimental --sandbox` from
 `run-copilot-review.sh` reverts cleanly to the pre-sandbox behavior (`--deny-tool
 write` only) — it's an isolated addition, not load-bearing for anything else in
 this script.
+
+## Scratch location for prompt files: resolved as a menu, not a single fixed path
+
+Both scripts now take the review prompt as a file path (`<prompt-file>`) instead of
+stdin/a heredoc — confirmed empirically that a heredoc whose body differs every
+invocation can never be covered by a single Bash permission allow-rule (tried both
+a `*`-suffixed and an exact-match rule; the confirmation prompt still appeared every
+time), whereas a fixed prompt-file path keeps the invoked command text constant,
+which a permission rule *can* match.
+
+Originally planned to pre-register one fixed scratch directory (e.g.
+`~/.cache/external-review/`) via a `Write(<dir>/**)` permission rule or
+`permissions.additionalDirectories`, set up once by a future `setup` skill. Dropped
+that plan after empirically confirming **Write permission grants for paths outside
+the current project are session-scoped only and never persist to any settings
+file** — tested across `.claude/settings.local.json` (hand-written `Write(...)`
+rules, both `//tmp/...` and the symlink-resolved `//private/tmp/...` forms),
+global `~/.claude/settings.json`, and `~/.claude.json`'s per-project `allowedTools`;
+none of them changed after approving via "allow all edits in `<dir>` during this
+session," including across a full session restart (which still required a fresh
+confirmation). So there is no way to make an out-of-project scratch directory
+permission-free forever — only "at most one confirmation per session" is
+achievable, no matter how it's registered.
+
+Given that, SKILL.md now documents three options and lets the calling agent pick
+per-environment, instead of standardizing on one:
+1. The target repo's own established gitignored scratch convention if it has one
+   (e.g. `tmp/`) — zero friction, zero contamination risk.
+2. Anywhere in the repo — same zero friction; both scripts now delete
+   `<prompt-file>` themselves right after reading it, before invoking the reviewer,
+   so nobody has to remember cleanup.
+3. Outside the repo (e.g. `/tmp/`) — zero repo contact, at the cost of the
+   one-confirmation-per-session floor described above.
+
+No further action needed here unless a `setup` skill later wants to smooth over
+option 3's per-session confirmation somehow (no known mechanism to do so today).
+
+## Register a Bash allow-rule for the scripts themselves, once per environment
+
+The whole point of switching to `<prompt-file>` args (see above) was so a Bash
+permission allow-rule could actually match a fixed, unvarying command — but nothing
+registers that rule automatically today. Without it, every single review invocation
+(not just the first one, unlike the Write-side confirmation above) prompts for
+confirmation, since Claude Code doesn't ask a written rule to persist itself; a
+rule has to actually be added to a settings file.
+
+Confirmed working during dogfooding: a rule shaped like
+`Bash(<path>/scripts/run-codex-review.sh *)` does suppress the prompt once
+registered and the settings file has been picked up (a mid-session edit to
+`.claude/settings.local.json` may need `/hooks` or a restart to be noticed — see
+Claude Code's settings-watcher caveat; a fresh session reads it fine). No separate
+no-args form is needed: `<prompt-file>` is a required argument (`${1:?...}` in
+both scripts), so every valid invocation has at least one trailing argument.
+
+Where this should go differs from the Write-scratch-directory question above: the
+skill's own script path is the same regardless of which target repo is being
+reviewed, so this belongs in **global** `~/.claude/settings.json`, not a
+per-project `.claude/settings.local.json` — otherwise it'd need re-registering in
+every project you ever review from. The path itself varies by install location
+though (personal `~/.claude/skills/external-review/`, project
+`.claude/skills/external-review/`, or a plugin cache path), so a setup step would
+need to resolve *this specific environment's* actual skill path before writing the
+rule, not hardcode one.
+
+Trigger to actually do this: same as the entries above — when this repo gets a
+`setup` skill. Until then, expect a confirmation prompt on every review invocation
+in a fresh environment, and register the rule by hand (or accept the prompts) in
+the meantime.

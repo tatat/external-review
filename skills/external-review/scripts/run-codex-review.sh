@@ -1,16 +1,24 @@
 #!/bin/bash
-# Runs a Codex CLI review with the prompt read from stdin, printing just the
+# Runs a Codex CLI review with the prompt read from a file, printing just the
 # final message and exiting with codex's own exit code.
 #
 # Usage:
-#   run-codex-review.sh [model] <<'PROMPT'
-#   <review prompt>
-#   PROMPT
+#   run-codex-review.sh <prompt-file> [model]
 #
+# The prompt is read from <prompt-file>, not stdin/a heredoc -- a heredoc's body
+# differs on every invocation, which means it can never be covered by a single
+# Bash permission allow-rule (confirmed empirically: neither a wildcard nor an
+# exact-match rule suppresses the confirmation prompt for a command whose
+# heredoc content varies). A fixed prompt-file path keeps the invoked command
+# text itself constant across invocations, which a permission rule CAN match.
+# <prompt-file> is deleted as soon as its content is read into memory, before
+# codex exec starts -- so if the caller wrote it inside the target repo's own
+# working tree, it's already gone before codex investigates "pending changes"
+# and can't be mistaken for part of the diff.
 # If [model] is omitted, codex's own configured default model is used.
 #
 # A fixed no-recursion preamble (see NO_RECURSION_PREAMBLE below) is prepended to
-# whatever prompt is piped in on stdin. Without it, Codex -- an agentic tool with
+# whatever prompt is in <prompt-file>. Without it, Codex -- an agentic tool with
 # read access to the target repo -- may read that repo's own AGENTS.md/CLAUDE.md or
 # skill instructions and try to recursively invoke an external review of its own
 # review: it has been observed calling both run-codex-review.sh and
@@ -53,10 +61,16 @@ read-only inspection commands (git diff, git status, git log, grep, cat, etc.).
 Avoid any action requiring network access.
 PREAMBLE
 
-MODEL="${1:-}"
+PROMPT_FILE="${1:?usage: run-codex-review.sh <prompt-file> [model]}"
+MODEL="${2:-}"
+if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
+  echo "run-codex-review.sh: couldn't read prompt file: $PROMPT_FILE" >&2
+  exit 1
+fi
+rm -f "$PROMPT_FILE"
 OUT="$(mktemp ${MKTEMP_DIR_ARGS[@]+"${MKTEMP_DIR_ARGS[@]}"})"
 LOG="$(mktemp ${MKTEMP_DIR_ARGS[@]+"${MKTEMP_DIR_ARGS[@]}"})"
-FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$(cat)"
+FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
 
 if [ -n "$MODEL" ]; then
   printf '%s' "$FULL_PROMPT" | codex exec --sandbox read-only --ephemeral --model "$MODEL" -o "$OUT" - > "$LOG" 2>&1
