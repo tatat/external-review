@@ -234,6 +234,12 @@ as a standing instruction for future reviews.
 
 ## 8. Communication
 
+The reviewer's raw output isn't visible to the user — it comes back through a tool
+call, not something they see unless you show it to them. So relaying it isn't a
+courtesy, it's the only way any of this reaches them at all: skip the announcement
+and applied-fixes summary below, and the review might as well not have happened
+from the user's point of view, however carefully you acted on it internally.
+
 Announce the review in a single sentence when starting, and another when applying
 findings or surfacing results to the user. Don't dump the full review verbatim unless
 asked.
