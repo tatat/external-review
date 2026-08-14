@@ -1,0 +1,11 @@
+{
+  "name": "external-review",
+  "owner": { "name": "tatat" },
+  "plugins": [
+    {
+      "name": "external-review",
+      "source": "./",
+      "description": "Get an independent review of pending (uncommitted) changes from an external AI reviewer (Codex CLI, falling back to GitHub Copilot CLI) before committing"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "external-review",
+  "description": "Get an independent review of pending (uncommitted) changes from an external AI reviewer (Codex CLI, falling back to GitHub Copilot CLI) before committing",
+  "version": "0.1.0",
+  "author": { "name": "tatat" },
+  "repository": "https://github.com/tatat/external-review",
+  "keywords": ["code-review", "codex", "copilot", "git", "commit"]
+}
