@@ -40,11 +40,10 @@ for dogfooding in this repo).
   the *target* repo, so the shell's working directory must stay at the target repo
   root — a plain path relative to the skill directory (`scripts/run-codex-review.sh`)
   would only resolve correctly by coincidence (e.g. dogfooding inside this repo) and
-  otherwise either fails or silently reviews the wrong repo. (A first pass here used
-  a plain relative path on the theory that the Agent Skills convention favors it —
-  true for *reference* files an agent reads, but wrong for a script that must be
-  *executed* from a cwd the skill doesn't control. An external review of this repo's
-  own first commit caught the mistake.) No env var (`${CLAUDE_PLUGIN_ROOT}` or
+  otherwise either fails or silently reviews the wrong repo. (Reference files an
+  agent merely reads can use relative paths safely; an executed script cannot,
+  since it runs from a cwd the skill doesn't control — an external review of this
+  repo's own first commit caught this exact mistake.) No env var (`${CLAUDE_PLUGIN_ROOT}` or
   similar) is used either: it's Claude Code-specific, and SKILL.md is a portable
   format installed unmodified across a much wider ecosystem than just Claude
   Code (see e.g. `vercel-labs/skills`, which installs the same SKILL.md package
@@ -67,7 +66,7 @@ for dogfooding in this repo).
   rule can actually match. SKILL.md documents three places to Write that file (a
   repo's own gitignored scratch convention if it has one, anywhere else in the
   repo, or outside it entirely) — see TODO.md for why no single fixed location
-  won permanently. Both scripts delete `<prompt-file>` themselves right after
+  worked for good. Both scripts delete `<prompt-file>` themselves right after
   reading it, before the reviewer starts, so even the "anywhere in the repo"
   option can't be mistaken for part of the diff being reviewed.
 - `TODO.md` records improvements that were considered and deliberately deferred,

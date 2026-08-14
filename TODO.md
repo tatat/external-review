@@ -39,8 +39,8 @@ Accepted because: (1) is a real gap but not a regression — `--deny-tool write`
 already the only protection before, so `--sandbox` with default policy is a
 non-negative addition (it does shrink blast radius outside cwd/PATH/temp/profile,
 just not within the target repo itself). (2) is a one-time, low-stakes global
-toggle (gates experimental CLI features, not filesystem/network access) — not
-nothing, but not worth the complexity below to avoid.
+toggle (gates experimental CLI features, not filesystem/network access) — a real
+but minor cost, not worth the complexity below to avoid.
 
 Trigger to revisit: if the `--experimental` persistence or the default-policy gap
 actually causes a problem in practice, not just in theory.
@@ -126,7 +126,7 @@ on Claude models** (`--model claude-sonnet-5` and other Claude variants are in i
 supported model list, per `copilot help config`). If Claude Code is the implementer
 and a Copilot CLI fallback happens to be configured with a Claude model, that
 fallback isn't actually an independent reviewer, even though it's a different CLI
-program — same model family reviewing itself, just wearing a different binary.
+program — the same model family reviewing itself under a different CLI's name.
 
 And the reverse case matters for portability too: this skill is meant to be portable
 across the whole Agent Skills ecosystem (see CLAUDE.md's conventions on

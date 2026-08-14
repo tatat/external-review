@@ -5,9 +5,6 @@ reviewer — Codex CLI first, falling back to GitHub Copilot CLI if Codex fails 
 for pending/uncommitted changes, a whole branch, a diff against a base ref, or an
 arbitrary commit range. Never a same-vendor subagent reviewing its own work.
 
-Whether and when this runs automatically (e.g. before every commit) is a policy
-call for *your* project, not something this plugin decides — see Usage below.
-
 ## Install
 
 In Claude Code:

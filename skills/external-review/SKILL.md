@@ -148,7 +148,8 @@ set `EXTERNAL_REVIEW_COPILOT_SANDBOX=0` to skip both flags and avoid it, falling
 back to `--deny-tool write` alone. `--log-dir` points at a fresh, ephemeral temp
 directory created per invocation by default (not Copilot's own persistent
 `~/.copilot/logs/`), overridable via `EXTERNAL_REVIEW_COPILOT_LOG_DIR`. `--silent`
-means the output is just the agent's response, not stats/chrome), then prints a
+means the output is just the agent's response, not stats or other status output),
+then prints a
 `Full trace: <path>` line pointing at that invocation's log — same as Codex, read
 it only if something looks wrong. Same background-execution
 guidance as Codex: use your agent tool's native background parameter, not a trailing
@@ -234,11 +235,9 @@ as a standing instruction for future reviews.
 
 ## 8. Communication
 
-The reviewer's raw output isn't visible to the user — it comes back through a tool
-call, not something they see unless you show it to them. So relaying it isn't a
-courtesy, it's the only way any of this reaches them at all: skip the announcement
-and applied-fixes summary below, and the review might as well not have happened
-from the user's point of view, however carefully you acted on it internally.
+Always relay the review outcome — the user can't see the reviewer's raw output
+otherwise, so if you skip the summary, the review effectively never happened as
+far as they know.
 
 Announce the review in a single sentence when starting, and another when applying
 findings or surfacing results to the user. Don't dump the full review verbatim unless
