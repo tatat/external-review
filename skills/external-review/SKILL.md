@@ -119,6 +119,12 @@ than "run `git status --short`, then `git diff HEAD`, then...".
 Give real context, since the reviewer has no memory of this conversation:
 
 - What changed and why (1–2 sentences of intent), so it can judge fit, not just syntax.
+- If this change followed a plan/design doc, point the reviewer at it and ask it to
+  check the diff against it for gaps — missed steps, not just incorrect code. Only
+  give a path if that doc lives inside the target repo's own working tree, where the
+  reviewer's read access is already guaranteed; if it lives elsewhere (e.g. a scratch
+  file outside the repo) or only ever existed in conversation, paste the relevant
+  plan content into the prompt directly instead of a path reference.
 - What's already been considered/ruled out, so it doesn't re-raise settled questions.
 - Known risk points if you have them (regex edge cases, a tricky concurrency change,
   etc.) — but leave room for it to flag things you didn't ask about too.
