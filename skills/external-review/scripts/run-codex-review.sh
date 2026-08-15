@@ -27,6 +27,15 @@
 # access. The preamble heads this off by telling Codex up front that it IS the
 # review step and must not act on those repo-level instructions.
 #
+# default-review-focus.txt (next to this script) is read and prepended too, so a
+# default review policy always applies even when the caller's own prompt doesn't
+# mention one -- it tells Codex to defer to the target repo's own documented
+# review priorities if it has any, and otherwise flag a fixed list of default
+# concerns. Read from disk by this script (not left for Codex to go read itself)
+# so it doesn't depend on Codex's sandboxed read access reaching outside the
+# target repo's working tree -- a real risk for Copilot's default sandbox policy,
+# see TODO.md, and this script has no way to know it's safe for Codex too.
+#
 # `codex exec`'s own verbose transcript (every tool call it makes) is redirected to
 # $LOG rather than printed here, so normal output is just the clean final report in
 # $OUT. Neither file is deleted -- if something goes wrong, read $LOG for the full
@@ -61,6 +70,12 @@ read-only inspection commands (git diff, git status, git log, grep, cat, etc.).
 Avoid any action requiring network access.
 PREAMBLE
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! DEFAULT_FOCUS_PREAMBLE="$(cat "$SCRIPT_DIR/default-review-focus.txt")"; then
+  echo "run-codex-review.sh: couldn't read $SCRIPT_DIR/default-review-focus.txt" >&2
+  exit 1
+fi
+
 PROMPT_FILE="${1:?usage: run-codex-review.sh <prompt-file> [model]}"
 MODEL="${2:-}"
 if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
@@ -70,7 +85,7 @@ fi
 rm -f "$PROMPT_FILE"
 OUT="$(mktemp ${MKTEMP_DIR_ARGS[@]+"${MKTEMP_DIR_ARGS[@]}"})"
 LOG="$(mktemp ${MKTEMP_DIR_ARGS[@]+"${MKTEMP_DIR_ARGS[@]}"})"
-FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
+FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$DEFAULT_FOCUS_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
 
 if [ -n "$MODEL" ]; then
   printf '%s' "$FULL_PROMPT" | codex exec --sandbox read-only --ephemeral --model "$MODEL" -o "$OUT" - > "$LOG" 2>&1

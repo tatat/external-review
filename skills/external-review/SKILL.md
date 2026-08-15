@@ -87,6 +87,17 @@ instructions (it has read access to that repo and would otherwise sometimes try 
 recursively invoke a review of its own review, then fail on its sandboxed environment's
 restrictions) — no need to add anything like that to your own prompt.
 
+The script also prepends a default review-focus policy (`scripts/default-review-focus.txt`)
+so review priorities are still covered even if your own prompt doesn't mention them.
+It tells the reviewer to defer to the target repo's own documented review priorities
+if it has any, and otherwise flag a fixed list of default concerns (unneeded
+backward-compatibility/fallbacks/defaults, patching around an existing mechanism
+instead of fixing it, and doc verbosity/context-dependency). Nothing to add to your
+own prompt for this either — and don't tell the reviewer to go read that file itself
+instead, since a reviewer's sandboxed read access isn't guaranteed to reach outside
+the target repo's own working tree (a real risk for Copilot's default sandbox policy,
+see TODO.md, though not one that's actually been observed to fail).
+
 - Don't pass a model override (`<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh <prompt-file> <model>`)
   unless a run fails on the account's default model — the default (`gpt-5.5` as of
   codex-cli 0.142.2, confirmed working under ChatGPT login) is fine. Some other model
@@ -153,8 +164,9 @@ then prints a
 `Full trace: <path>` line pointing at that invocation's log — same as Codex, read
 it only if something looks wrong. Same background-execution
 guidance as Codex: use your agent tool's native background parameter, not a trailing
-`&` — combining both detaches the process and its output is lost. Same automatic no-recursion preamble as the Codex
-script, too — nothing extra to add to your own prompt.
+`&` — combining both detaches the process and its output is lost. Same automatic
+no-recursion preamble and default review-focus policy as the Codex script, too —
+nothing extra to add to your own prompt.
 
 ## 3. Diagnosing a failure
 

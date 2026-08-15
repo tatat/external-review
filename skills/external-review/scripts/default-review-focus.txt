@@ -1,0 +1,18 @@
+Before you start, check whether this repository documents what to prioritize during
+review anywhere (e.g. AGENTS.md, CLAUDE.md, a CONTRIBUTING guide, or similar -- these
+are examples, not an exhaustive list of filenames to check). If it does, follow that
+instead of the list below. Otherwise, in addition to your own general judgment
+(bugs, security, performance, readability, etc.), specifically flag:
+- Unneeded backward-compatibility shims -- they add complexity without a real
+  compatibility requirement behind them.
+- Unneeded fallbacks and unneeded defaults -- both tend to mask problems instead
+  of surfacing them, and invite unintended behavior for cases that should either
+  be explicit or shouldn't be reachable at all.
+- A patch layered onto an existing mechanism where fixing the mechanism itself
+  would be substantially better -- a sign the change is preserving the status quo
+  out of inertia rather than a real constraint, leaving the code messier over time.
+- Documentation that hedges or talks around the point instead of stating it
+  directly.
+- Documentation that depends on context outside itself (e.g. assumes the reader
+  shared a conversation, or has tribal knowledge) -- a first-time reader must be
+  able to follow it from the doc alone.

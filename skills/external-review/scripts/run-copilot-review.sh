@@ -25,6 +25,15 @@
 # could otherwise try to act on that repo's own AGENTS.md/CLAUDE.md or skill
 # instructions, recursively invoking a review of its own review.
 #
+# default-review-focus.txt (next to this script, shared with run-codex-review.sh)
+# is read and prepended too, so a default review policy always applies even when
+# the caller's own prompt doesn't mention one -- it tells Copilot to defer to the
+# target repo's own documented review priorities if it has any, and otherwise
+# flag a fixed list of default concerns. Read from disk by this script rather
+# than left for Copilot to go read itself, since under Copilot's default sandbox
+# policy (see below) reads outside the target repo's working tree aren't
+# guaranteed to succeed.
+#
 # --experimental --sandbox turn on Copilot CLI's (experimental) OS-level command
 # sandbox for this session, adding filesystem/network enforcement on top of
 # --deny-tool write below (which only blocks the dedicated file-write tool, not
@@ -43,14 +52,6 @@ if [ "${EXTERNAL_REVIEW_COPILOT_SANDBOX:-1}" != "0" ]; then
   SANDBOX_FLAGS=(--experimental --sandbox)
 fi
 
-# Copilot's own log directory, passed explicitly instead of relying on its
-# built-in ~/.copilot/logs/ default -- that default is a persistent directory
-# under the user's home that would otherwise accumulate a file per review
-# invocation forever. Default here to a fresh, ephemeral temp dir per invocation
-# instead (mirrors run-codex-review.sh's mktemp-based log), overridable via
-# EXTERNAL_REVIEW_COPILOT_LOG_DIR. This also makes the "Full trace" lookup below
-# always match wherever this invocation actually wrote its log.
-LOG_DIR="${EXTERNAL_REVIEW_COPILOT_LOG_DIR:-$(mktemp -d)}"
 set -uo pipefail
 
 read -r -d '' NO_RECURSION_PREAMBLE <<'PREAMBLE'
@@ -70,6 +71,12 @@ read-only inspection commands (git diff, git status, git log, grep, cat, etc.).
 Avoid any action requiring network access.
 PREAMBLE
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! DEFAULT_FOCUS_PREAMBLE="$(cat "$SCRIPT_DIR/default-review-focus.txt")"; then
+  echo "run-copilot-review.sh: couldn't read $SCRIPT_DIR/default-review-focus.txt" >&2
+  exit 1
+fi
+
 PROMPT_FILE="${1:?usage: run-copilot-review.sh <prompt-file> [model]}"
 MODEL="${2:-gpt-5.5}"
 if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
@@ -77,7 +84,19 @@ if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
   exit 1
 fi
 rm -f "$PROMPT_FILE"
-FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
+FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$DEFAULT_FOCUS_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
+
+# Copilot's own log directory, passed explicitly instead of relying on its
+# built-in ~/.copilot/logs/ default -- that default is a persistent directory
+# under the user's home that would otherwise accumulate a file per review
+# invocation forever. Default here to a fresh, ephemeral temp dir per invocation
+# instead (mirrors run-codex-review.sh's mktemp-based log), overridable via
+# EXTERNAL_REVIEW_COPILOT_LOG_DIR. This also makes the "Full trace" lookup below
+# always match wherever this invocation actually wrote its log. Created only
+# after both input files have been read successfully, so a failed read above
+# doesn't leave an orphaned empty temp dir behind.
+LOG_DIR="${EXTERNAL_REVIEW_COPILOT_LOG_DIR:-$(mktemp -d)}"
+
 # --deny-tool write blocks the dedicated file-write tool. Deny rules take
 # precedence over --allow-all-tools. This alone doesn't cover shell-based writes
 # (e.g. `git commit`, `rm`) -- SANDBOX_FLAGS above adds real OS-level enforcement
