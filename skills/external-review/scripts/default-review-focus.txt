@@ -11,6 +11,9 @@ instead of the list below. Otherwise, in addition to your own general judgment
 - A patch layered onto an existing mechanism where fixing the mechanism itself
   would be substantially better -- a sign the change is preserving the status quo
   out of inertia rather than a real constraint, leaving the code messier over time.
+- Complex branching introduced to avoid a small amount of duplication -- when the
+  duplicated code would have been simpler to read than the abstraction built to
+  avoid it, DRY made the change worse, not better.
 - Documentation that hedges or talks around the point instead of stating it
   directly.
 - Documentation that depends on context outside itself (e.g. assumes the reader
