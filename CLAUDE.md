@@ -31,9 +31,13 @@ for dogfooding in this repo).
 
 ## Conventions
 
-- Both scripts are self-contained (no shared sourcing between them) — the
-  no-recursion preamble is intentionally duplicated rather than factored out, so
-  each script stays a single file that's easy to read top-to-bottom.
+- Both scripts are self-contained in the sense that neither sources or depends on
+  the other's *logic* — but they do share fixed prompt text as plain data files
+  next to them in `scripts/` (`no-recursion-preamble.txt`, `default-review-focus.txt`),
+  each read from disk and prepended to the reviewer prompt at invocation time. This
+  is deliberately data sharing, not code sharing: it keeps the two identical prompt
+  fragments from drifting out of sync without either script needing to know
+  anything about the other.
 - SKILL.md tells the invoking agent to resolve the bundled scripts to an **absolute**
   path before running them, without `cd`-ing into the skill's own directory. This
   skill's whole job is to run `codex exec`/`copilot` against whatever's in scope in
