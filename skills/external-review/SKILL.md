@@ -1,6 +1,6 @@
 ---
 name: external-review
-description: "Get an independent code review from an external AI reviewer (Codex CLI, falling back to GitHub Copilot CLI) for pending/uncommitted changes, a whole branch, a diff against a base ref, or an arbitrary commit range. Never substitutes a same-vendor/model subagent as the reviewer."
+description: "Get an independent code review from an external AI reviewer (Codex CLI, falling back to GitHub Copilot CLI). Never substitutes a same-vendor/model subagent as the reviewer."
 ---
 
 # External Code Review
