@@ -1,7 +1,7 @@
 {
   "name": "external-review",
   "description": "Get an independent code review from an external AI reviewer (Codex CLI, falling back to GitHub Copilot CLI)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": { "name": "tatat" },
   "repository": "https://github.com/tatat/external-review",
   "keywords": ["code-review", "codex", "copilot", "git", "commit"]
