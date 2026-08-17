@@ -77,9 +77,11 @@ Given that, SKILL.md now documents three options and lets the calling agent pick
 per-environment, instead of standardizing on one:
 1. The target repo's own established gitignored scratch convention if it has one
    (e.g. `tmp/`) — zero friction, zero contamination risk.
-2. Anywhere in the repo — same zero friction; both scripts now delete
-   `<prompt-file>` themselves right after reading it, before invoking the reviewer,
-   so nobody has to remember cleanup.
+2. Anywhere in the repo — same zero friction; neither script deletes
+   `<prompt-file>` (it belongs to the caller, not the script), so it could in
+   principle be mistaken for part of the diff -- both scripts instead tell the
+   reviewer the exact path used to pass it the prompt, so it can recognize and
+   disregard that file itself.
 3. Outside the repo (e.g. `/tmp/`) — zero repo contact, at the cost of the
    one-confirmation-per-session floor described above.
 

@@ -70,9 +70,12 @@ for dogfooding in this repo).
   rule can actually match. SKILL.md documents three places to Write that file (a
   repo's own gitignored scratch convention if it has one, anywhere else in the
   repo, or outside it entirely) — see TODO.md for why no single fixed location
-  worked for good. Both scripts delete `<prompt-file>` themselves right after
-  reading it, before the reviewer starts, so even the "anywhere in the repo"
-  option can't be mistaken for part of the diff being reviewed.
+  worked for good. Neither script touches `<prompt-file>` beyond reading it — it
+  belongs to the caller, not the script, so cleanup is the caller's call, not
+  something the script does on their behalf. For the "anywhere in the repo" option,
+  where the file could otherwise be mistaken for part of the diff being reviewed,
+  both scripts instead tell the reviewer the exact path used to pass it the
+  prompt, so it can recognize and disregard that file itself.
 - `TODO.md` records improvements that were considered and deliberately deferred,
   with the trigger that would make each worth doing. Check it before redesigning
   something it covers; add to it when deferring a non-trivial idea.

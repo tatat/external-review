@@ -8,10 +8,14 @@
 # run-codex-review.sh's comment for why: a heredoc's varying body can't be
 # covered by a single Bash permission allow-rule (confirmed empirically), while
 # a fixed prompt-file path keeps the invoked command text constant.
-# <prompt-file> is deleted as soon as its content is read into memory, before
-# copilot starts -- so if the caller wrote it inside the target repo's own
-# working tree, it's already gone before copilot investigates "pending changes"
-# and can't be mistaken for part of the diff.
+# <prompt-file> is only ever read by this script, never written to or deleted --
+# it belongs to the caller, and this script has no business managing its
+# lifecycle. If the caller wrote it inside the target repo's own working tree, it
+# may still be sitting there (e.g. as an untracked file) by the time copilot
+# investigates "pending changes"; instead of removing it, this script tells
+# copilot exactly which path was used to pass it the prompt (see
+# PROMPT_FILE_NOTE below) so it can recognize and disregard that file if it
+# encounters it, rather than mistaking it for part of the diff.
 #
 # Defaults to gpt-5.5 if [model] is omitted, intended to match the current Codex
 # CLI default (see run-codex-review.sh -- it doesn't pin a model itself, it defers
@@ -71,8 +75,8 @@ if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
   echo "run-copilot-review.sh: couldn't read prompt file: $PROMPT_FILE" >&2
   exit 1
 fi
-rm -f "$PROMPT_FILE"
-FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$DEFAULT_FOCUS_PREAMBLE"$'\n\n---\n\n'"$PROMPT_CONTENT"
+PROMPT_FILE_NOTE="Note: $PROMPT_FILE was used to pass you this prompt as a temporary file. If it's still present in the working tree, it is tooling plumbing, not part of the change being reviewed -- disregard it."
+FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$DEFAULT_FOCUS_PREAMBLE"$'\n\n---\n\n'"$PROMPT_FILE_NOTE"$'\n\n---\n\n'"$PROMPT_CONTENT"
 
 # Copilot's own log directory, passed explicitly instead of relying on its
 # built-in ~/.copilot/logs/ default -- that default is a persistent directory

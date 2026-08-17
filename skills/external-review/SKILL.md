@@ -28,6 +28,16 @@ developing inside this skill's own repo) and silently reviews the wrong reposito
 fails outright, everywhere else it's installed (personal `~/.claude/skills/`, a
 project's `.claude/skills/`, or as an installed plugin).
 
+To get that absolute path, don't search the filesystem for it — check the context
+your own tool already gave you when it surfaced this SKILL.md. Claude Code, for
+example, precedes this content with a `Base directory for this skill: <path>` line
+each time it loads this skill; use that path directly (`<that-path>/scripts/...`).
+Only fall back to searching (e.g. `find`/`glob` for a directory containing
+`run-codex-review.sh`) if your tool gave you no such hint, and even then, be aware
+this skill can be installed in more than one place at once (a project's own
+`.claude/skills/`, a personal `~/.claude/skills/`, an installed plugin) — a search
+can land on the wrong copy.
+
 Both scripts take the review prompt as a **file path**, not stdin/a heredoc — write
 your prompt to a file with the Write tool first, then pass that path as the first
 argument. A heredoc's body differs on every invocation, so it can never be covered by
@@ -35,6 +45,12 @@ a single Bash permission allow-rule (confirmed empirically — neither a wildcar
 exact-match rule suppresses the confirmation prompt when the heredoc content varies);
 a fixed prompt-file path keeps the invoked command text constant, which a permission
 rule can actually match.
+
+Neither script touches `<prompt-file>` beyond reading it — it belongs to you, not
+the script, so cleanup (if any) is your call, not something to expect the script to
+do. You can reuse the same file across invocations (e.g. retrying the same reviewer,
+or falling back from Codex to Copilot) as long as its content is still accurate for
+what you're asking the reviewer to do; write a new one when it isn't.
 
 Where to write that file — pick whichever fits this environment, in this order of
 preference:
@@ -45,10 +61,11 @@ preference:
    project) and no contamination risk (already excluded from `git status`/`git diff`,
    so the reviewer won't see it as a pending change).
 2. **Anywhere in the target repo** — if no such convention exists, write it in the
-   repo (e.g. its root) anyway. Same zero Write-permission friction as above, and no
-   cleanup for you to remember either: both scripts delete `<prompt-file>` themselves
-   as soon as they've read it into memory, *before* invoking `codex exec`/`copilot`,
-   so it's already gone by the time the reviewer inspects "pending changes."
+   repo (e.g. its root) anyway. Same zero Write-permission friction as above. Unlike
+   option 1, this one *is* visible in the working tree and to `git status`, so it
+   could in principle be mistaken for part of the change under review — both scripts head
+   this off by telling the reviewer the exact path used to pass it the prompt, so it
+   can recognize and disregard that file rather than treating it as part of the diff.
 3. **Outside the repo entirely** (e.g. `/tmp/`) — if you'd rather not touch the
    target repo's working tree even transiently. Confirmed empirically that Write
    grants for paths outside the current project are **session-scoped only**: even
@@ -139,9 +156,8 @@ Give real context, since the reviewer has no memory of this conversation:
 ## 2. Fallback: GitHub Copilot CLI
 
 If Codex fails, immediately run the bundled script directly (again, don't hand-write
-the `copilot` invocation). Write the prompt to a **new** file and pass its path — the
-file from step 1 is already gone by now (`run-codex-review.sh` deletes it right after
-reading, before Codex even starts):
+the `copilot` invocation). You can reuse the same `<prompt-file>` from step 1 — neither
+script touches it beyond reading it — as long as its content is still accurate:
 
 ```bash
 <abs-path-to-this-skill-dir>/scripts/run-copilot-review.sh <prompt-file>
