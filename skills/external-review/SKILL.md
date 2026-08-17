@@ -28,16 +28,6 @@ developing inside this skill's own repo) and silently reviews the wrong reposito
 fails outright, everywhere else it's installed (personal `~/.claude/skills/`, a
 project's `.claude/skills/`, or as an installed plugin).
 
-To get that absolute path, don't search the filesystem for it — check the context
-your own tool already gave you when it surfaced this SKILL.md. Claude Code, for
-example, precedes this content with a `Base directory for this skill: <path>` line
-each time it loads this skill; use that path directly (`<that-path>/scripts/...`).
-Only fall back to searching (e.g. `find`/`glob` for a directory containing
-`run-codex-review.sh`) if your tool gave you no such hint, and even then, be aware
-this skill can be installed in more than one place at once (a project's own
-`.claude/skills/`, a personal `~/.claude/skills/`, an installed plugin) — a search
-can land on the wrong copy.
-
 Both scripts take the review prompt as a **file path**, not stdin/a heredoc — write
 your prompt to a file with the Write tool first, then pass that path as the first
 argument. A heredoc's body differs on every invocation, so it can never be covered by
