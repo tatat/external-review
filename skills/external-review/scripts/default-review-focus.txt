@@ -8,6 +8,11 @@ instead of the list below. Otherwise, in addition to your own general judgment
 - Unneeded fallbacks and unneeded defaults -- both tend to mask problems instead
   of surfacing them, and invite unintended behavior for cases that should either
   be explicit or shouldn't be reachable at all.
+- A parameter, field, or return type made optional or nullable when every call
+  site is controlled by the same codebase -- don't stop at "does this need a
+  default", also ask whether the empty state needs to be reachable at all. If
+  every caller, tests included, could supply a real value, the type shouldn't
+  admit the empty one either.
 - A patch layered onto an existing mechanism where fixing the mechanism itself
   would be substantially better -- a sign the change is preserving the status quo
   out of inertia rather than a real constraint, leaving the code messier over time.
