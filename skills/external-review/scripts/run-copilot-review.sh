@@ -51,7 +51,8 @@
 # session-only). Accepted as a low-stakes trade-off -- see TODO.md.
 #
 # Set EXTERNAL_REVIEW_COPILOT_SANDBOX=0 to skip both flags and fall back to
-# --deny-tool write alone (e.g. if the --experimental persistence is unwanted).
+# --deny-tool write alone (e.g. if the --experimental persistence is unwanted,
+# or bubblewrap isn't installed -- see the bwrap check below).
 SANDBOX_FLAGS=()
 if [ "${EXTERNAL_REVIEW_COPILOT_SANDBOX:-1}" != "0" ]; then
   SANDBOX_FLAGS=(--experimental --sandbox)
@@ -78,6 +79,28 @@ fi
 PROMPT_FILE_NOTE="Note: $PROMPT_FILE was used to pass you this prompt as a temporary file. If it's still present in the working tree, it is tooling plumbing, not part of the change being reviewed -- disregard it."
 FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$DEFAULT_FOCUS_PREAMBLE"$'\n\n---\n\n'"$PROMPT_FILE_NOTE"$'\n\n---\n\n'"$PROMPT_CONTENT"
 
+# On Linux, --sandbox requires a system `bwrap` (bubblewrap) binary (macOS uses
+# `sandbox-exec`, Windows uses its own mechanism -- see TODO.md -- neither needs
+# bwrap, so this check is Linux-only). Unlike Codex CLI, which falls back to a
+# bundled bwrap of its own when the system one is missing, Copilot CLI has no such
+# fallback on Linux: without bwrap it still starts, warns once, and then silently
+# degrades for the rest of the session -- its shell runner becomes unusable (no
+# `git status`/`git diff`/repo-wide search), while the process itself still exits
+# 0. That leaves no signal a caller can act on short of parsing the reviewer's own
+# prose for a caveat. Fail fast here instead, before ever invoking copilot, and let
+# the caller decide -- installing bwrap or setting EXTERNAL_REVIEW_COPILOT_SANDBOX=0
+# is a real tradeoff (OS-level sandbox vs. full tool access), not something this
+# script should pick silently on the caller's behalf. Checked here, after the
+# argument/preamble-file validation above (so a missing bwrap never masks an
+# earlier, unrelated invocation error) but before LOG_DIR below (so a fail-fast
+# exit doesn't leave an unused empty temp dir behind). See
+# https://github.com/tatat/external-review/issues/2.
+if [ "${#SANDBOX_FLAGS[@]}" -gt 0 ] && [ "$(uname -s)" = "Linux" ] && ! command -v bwrap >/dev/null 2>&1; then
+  echo "run-copilot-review.sh: --experimental --sandbox requires bubblewrap (bwrap) on Linux, which isn't installed on this host." >&2
+  echo "Install bubblewrap, or set EXTERNAL_REVIEW_COPILOT_SANDBOX=0 to run without the OS-level sandbox (falls back to --deny-tool write alone)." >&2
+  exit 1
+fi
+
 # Copilot's own log directory, passed explicitly instead of relying on its
 # built-in ~/.copilot/logs/ default -- that default is a persistent directory
 # under the user's home that would otherwise accumulate a file per review
@@ -85,8 +108,8 @@ FULL_PROMPT="$NO_RECURSION_PREAMBLE"$'\n\n---\n\n'"$DEFAULT_FOCUS_PREAMBLE"$'\n\
 # instead (mirrors run-codex-review.sh's mktemp-based log), overridable via
 # EXTERNAL_REVIEW_COPILOT_LOG_DIR. This also makes the "Full trace" lookup below
 # always match wherever this invocation actually wrote its log. Created only
-# after both input files have been read successfully, so a failed read above
-# doesn't leave an orphaned empty temp dir behind.
+# after both input files and the bwrap check above have succeeded, so a failed
+# read or a fail-fast bwrap check doesn't leave an orphaned empty temp dir behind.
 LOG_DIR="${EXTERNAL_REVIEW_COPILOT_LOG_DIR:-$(mktemp -d)}"
 
 # --deny-tool write blocks the dedicated file-write tool. Deny rules take

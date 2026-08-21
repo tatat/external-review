@@ -168,7 +168,15 @@ TODO.md for the full reasoning and what a real fix would need). `--experimental`
 also permanently persists `"experimental": true` into the user's global
 `~/.copilot/settings.json` on every invocation — a known, accepted side effect;
 set `EXTERNAL_REVIEW_COPILOT_SANDBOX=0` to skip both flags and avoid it, falling
-back to `--deny-tool write` alone. `--log-dir` points at a fresh, ephemeral temp
+back to `--deny-tool write` alone. On Linux, `--sandbox` also requires a system
+`bwrap` (bubblewrap) binary (macOS uses `sandbox-exec`, Windows uses its own
+mechanism — neither needs bwrap) — unlike Codex CLI, Copilot CLI has no bundled
+fallback of its own on Linux, and without one it doesn't fail cleanly: it starts,
+warns once, and then silently degrades for the rest of the session (shell runner
+unusable, no `git status`/`git diff`/repo-wide search) while still exiting 0. On
+Linux, the script checks for `bwrap` itself and **fails fast** before ever invoking
+`copilot` if it's missing — see "Diagnosing a failure" below for what to do when
+that happens. `--log-dir` points at a fresh, ephemeral temp
 directory created per invocation by default (not Copilot's own persistent
 `~/.copilot/logs/`), overridable via `EXTERNAL_REVIEW_COPILOT_LOG_DIR`. `--silent`
 means the output is just the agent's response, not stats or other status output),
@@ -201,6 +209,13 @@ When either tool fails, classify why before deciding what to do — don't just t
   itself times out, or returns a 5xx / rate-limit error. This is likely to resolve on
   its own; the right move is to wait and retry later, not to treat the tool as
   permanently unavailable.
+- **Missing bubblewrap (Copilot on Linux only)** — `run-copilot-review.sh` exits 1
+  before invoking `copilot` with a message about `bwrap` not being installed. This
+  is a setup gap, but don't resolve it yourself by silently retrying with
+  `EXTERNAL_REVIEW_COPILOT_SANDBOX=0` — that trades away Copilot's OS-level sandbox
+  for the session, which is the user's call, not yours. Tell the user the tool
+  failed because bubblewrap isn't installed and ask them to either install it or
+  have you retry with `EXTERNAL_REVIEW_COPILOT_SANDBOX=0` for this run.
 
 Still attempt the other reviewer regardless of which kind of failure the first one
 had — a setup gap or outage in one tool says nothing about the other's availability.
