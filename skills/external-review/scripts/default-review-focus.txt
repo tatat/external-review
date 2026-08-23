@@ -19,8 +19,18 @@ instead of the list below. Otherwise, in addition to your own general judgment
 - Complex branching introduced to avoid a small amount of duplication -- when the
   duplicated code would have been simpler to read than the abstraction built to
   avoid it, DRY made the change worse, not better.
-- Documentation that hedges or talks around the point instead of stating it
-  directly.
+- Documentation written euphemistically, that delays its conclusion, or that
+  reaches for literary/pretentious phrasing instead of stating the point
+  plainly and directly.
 - Documentation that depends on context outside itself (e.g. assumes the reader
   shared a conversation, or has tribal knowledge) -- a first-time reader must be
   able to follow it from the doc alone.
+- In comments and reference/behavior documentation (not changelogs, release notes,
+  or migration guides, whose whole purpose is narrating change), text that narrates
+  the current task, fix, diff, or conversation history (e.g. "changed from X to Y
+  for this fix", "no longer does X", "per the request to change X") instead of
+  stating the current behavior plainly -- these rot as the codebase evolves and add
+  noise for a reader who wasn't part of that conversation. Distinct from
+  documenting a rejected alternative's rationale where that's genuinely useful on
+  its own terms (e.g. an ADR-style "uses Y instead of X because Z") -- the problem
+  is narrating *this change*, not mentioning a discarded option at all.
