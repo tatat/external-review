@@ -106,8 +106,8 @@ the target repo's own working tree (a real risk for Copilot's default sandbox po
 see TODO.md, though not one that's actually been observed to fail).
 
 - Don't pass a model override (`<abs-path-to-this-skill-dir>/scripts/run-codex-review.sh <prompt-file> <model>`)
-  unless a run fails on the account's default model — the default (`gpt-5.5` as of
-  codex-cli 0.142.2, confirmed working under ChatGPT login) is fine. Some other model
+  unless a run fails on the account's default model — the default (`gpt-6.1-sol` as of
+  codex-cli 0.162.1, confirmed working under ChatGPT login) is fine. Some other model
   IDs 400-error under a ChatGPT login rather than an API key.
 - For a large/complex diff where the review might take a while, run this same script
   call in the background instead of waiting synchronously (in Claude Code, that's the
@@ -154,8 +154,8 @@ script touches it beyond reading it — as long as its content is still accurate
 ```
 
 The script reads the prompt from `<prompt-file>` and forwards it to
-`copilot --experimental --sandbox --log-dir <dir> --model gpt-5.5 --allow-all-tools --deny-tool write --silent -p '<prompt>'`
-(the model defaults to `gpt-5.5`, intended to match the current Codex CLI default
+`copilot --experimental --sandbox --log-dir <dir> --model gpt-6.1-sol --allow-all-tools --deny-tool write --silent -p '<prompt>'`
+(the model defaults to `gpt-6.1-sol`, intended to match the current Codex CLI default
 — see run-codex-review.sh, which doesn't pin a model itself — so both reviewers
 run on a comparable model/cost tier; update this if Codex CLI's default changes;
 `--deny-tool write` blocks the dedicated file-write tool — deny rules take

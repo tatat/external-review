@@ -17,7 +17,7 @@
 # PROMPT_FILE_NOTE below) so it can recognize and disregard that file if it
 # encounters it, rather than mistaking it for part of the diff.
 #
-# Defaults to gpt-5.5 if [model] is omitted, intended to match the current Codex
+# Defaults to gpt-6.1-sol if [model] is omitted, intended to match the current Codex
 # CLI default (see run-codex-review.sh -- it doesn't pin a model itself, it defers
 # to whatever Codex CLI is configured to use) so both reviewers run on a
 # comparable model/cost tier rather than an arbitrary pick. If Codex CLI's default
@@ -71,7 +71,7 @@ if ! DEFAULT_FOCUS_PREAMBLE="$(cat "$SCRIPT_DIR/default-review-focus.txt")"; the
 fi
 
 PROMPT_FILE="${1:?usage: run-copilot-review.sh <prompt-file> [model]}"
-MODEL="${2:-gpt-5.5}"
+MODEL="${2:-gpt-6.1-sol}"
 if ! PROMPT_CONTENT="$(cat "$PROMPT_FILE")"; then
   echo "run-copilot-review.sh: couldn't read prompt file: $PROMPT_FILE" >&2
   exit 1
